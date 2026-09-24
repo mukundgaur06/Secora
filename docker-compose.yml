@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: secora_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - DATABASE_URL=postgresql://secora_user:secora_secure_password_2026@db:5432/secora_db
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=secora_super_secret_jwt_key_prod_2026
+      - LLM_PROVIDER=gemini
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    depends_on:
+      - db
+      - redis
+    networks:
+      - secora_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: secora_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - secora_network
+
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: secora_db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=secora_user
+      - POSTGRES_PASSWORD=secora_secure_password_2026
+      - POSTGRES_DB=secora_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - secora_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: secora_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - secora_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  secora_network:
+    driver: bridge
